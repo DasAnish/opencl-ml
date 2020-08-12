@@ -1,0 +1,13 @@
+__kernel void forward(const unsigned int size,
+ __global const float *input,
+ __global const float *weights,
+ __global const float *bias,
+ __global float *output)
+{
+  int i = get_global_id(0);
+  output[i] = bias[i];
+
+  for (int k = 0; k < size; k++) {
+    output[i] += input[k]*weights[i*size + k];
+  }
+}
