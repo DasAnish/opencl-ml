@@ -1,7 +1,5 @@
-from ClObject import ClObject
+from to_remove.ClObject import ClObject
 import pyopencl.array as pycl_array
-import pyopencl as cl
-import pyopencl.clmath as pycl_math
 import abc
 
 
