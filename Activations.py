@@ -9,8 +9,8 @@ BINARY_STEP, LINEAR, SIGMOID, TANH, RELU, LEAKY_RELU, SOFTMAX = (i for i in rang
 
 class Activation(ClObject):
 
-    def __init__(self, queue, context, activation, linear_gradient=1, leak=0.01):
-        ClObject.__init__(queue, context)
+    def __init__(self, queue, context, activation=RELU, linear_gradient=1, leak=0.01):
+        ClObject.__init__(self, queue, context)
         self.activation = activation
 
         # values for the funcitons may be optimized in hyperparameter tuning

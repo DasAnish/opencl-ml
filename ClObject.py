@@ -4,7 +4,7 @@ import pyopencl.array as pycl_array
 
 class ClObject:
 
-    def __init__(self, context, queue):
+    def __init__(self, queue, context):
         self.context = context
         self.queue = queue
 
