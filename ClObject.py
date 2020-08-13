@@ -1,6 +1,8 @@
 import pyopencl as cl
 import pyopencl.array as pycl_array
 
+# TODO: make this a Singleton class
+
 
 class ClObject:
 
@@ -18,8 +20,8 @@ class Code(ClObject):
     def build(self):
         if self.code is None:
             raise ValueError("There is no code defined")
-
-        self.program = cl.Program(self.context, self.code).build()
+        if self.program is None:
+            self.program = cl.Program(self.context, self.code).build()
 
     def set_code(self, path_to_file=None, code=None):
         if path_to_file is None and code is None:

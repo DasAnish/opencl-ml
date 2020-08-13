@@ -3,28 +3,42 @@ import pyopencl.clmath as pycl_math
 import numpy as np
 from ClObject import Code, ClObject
 from Activations import *
+from Error import *
 
 '''Gonna put different types of layers in this'''
 
 
-class Layer(ClObject):
-
-    def __init__(self, queue, context, n):
+class LayerBase(ClObject):
+    def __init__(self, queue, context, size, activation=RELU):
         ClObject.__init__(self, queue, context)
-        self.layer_size = np.int32(n)
+        self.layer_size = np.int32(size)
+        self.layer = pycl_array.to_device(
+            queue,
+            np.random.uniform(-1, 1, size).astype(np.float32)
+        )
+        self.activation = activation
+
+    def set_activation(self, activation_type):
+        self.activation.type = activation_type
+
+    def activate(self):
+        self.layer = self.activation.activate(self.layer)
+
+    def __len__(self):
+        return self.layer_size
+
+
+class Layer(LayerBase):
+
+    def __init__(self, queue, context, n, activation=RELU):
+        LayerBase.__init__(self, queue, context, n, activation)
         self.next_layer = None      # object for next layer
         self.weights = None         # pycl_array
         self.next_layer_size = None
         self.bias = None            # for the next layer
         self.code = None
-        self.activation = Activation()
 
-        self.layer = pycl_array.to_device(
-            queue,
-            np.random.uniform(-1, 1, n).astype(np.float32)
-        )
-
-    def forward(self, queue):
+    def forward(self, _input=None):
         if self.next_layer is None:
             raise ValueError("Next Layer hasn't been defined yet. "
                              "Define it first.")
@@ -35,23 +49,33 @@ class Layer(ClObject):
             raise ValueError("Code from clForward text file needs to be added so that it runs on"
                              "GPU")
 
+        if _input is not None:
+            if len(_input) != self.layer_size:
+                raise ValueError("Incorrect input size")
+            self.layer.set(_input)
+
+        # print(type(self.layer_size), type(self.next_layer.layer_size))
+
         self.code.program.forward(
-            queue,
-            self.next_layer.layer.shape,
+            self.queue,
+            self.next_layer.shape,
             None,
             self.layer_size,
             self.layer.data,
             self.weights.data,
             self.bias.data,
-            self.next_layer.layer.data
+            self.next_layer.data,
+            np.int32(self.activation)
         )
+
+        # self.next_layer.activate()
 
     def set_next_layer(self, layer):
         if isinstance(layer, pycl_array.Array):
             self.next_layer = layer
             self.next_layer_size = np.int32(len(layer))
         else:
-            raise TypeError(f"Layer argument should be {type(pycl_array.Array)};"
+            raise TypeError(f"Layer argument should be {pycl_array.Array};"
                             f" provided {type(layer)}")
 
     def set_weights(self, weights):
@@ -64,22 +88,27 @@ class Layer(ClObject):
         self.weights = weights
 
     def set_code(self, code):
-        if isinstance(code, Code):
-            raise TypeError(f"Need to provide {type(Code)}; provided {type(code)}")
+        if not isinstance(code, Code):
+            raise TypeError(f"Need to provide {Code}; provided {type(code)}")
 
         self.code = code
 
     def set_bias(self, bias):
         if not isinstance(bias, pycl_array.Array):
-            raise TypeError(f"Please provide a {type(pycl_array.Array)}"
+            raise TypeError(f"Please provide a {pycl_array.Array}"
                             f" instead of {type(bias)}")
-        if len(bias) == self.next_layer_size:
-            raise ValueError("The size should be current size")
+        if len(bias) != self.next_layer_size:
+            raise ValueError("The size should be correct size "
+                             f"is ({self.next_layer_size}); and not ({len(bias)})")
 
         self.bias = bias
 
-    def set_activation(self, activation_type):
-        self.activation.type = activation_type
 
-    def activate(self):
-        self.layer = self.activation.activate(self.layer)
+class Output(LayerBase):
+
+    def __init__(self, queue, context, size, activation=SOFTMAX):
+        LayerBase.__init__(self, queue, context, size, activation)
+        self.error = MeanSquaredError(queue, context)
+
+    def get_error_value(self, expected):
+        return self.error.error_value(self.layer, expected)

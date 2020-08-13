@@ -1,4 +1,4 @@
-from to_remove.ClObject import ClObject
+from ClObject import ClObject
 import pyopencl.array as pycl_array
 import abc
 
@@ -6,7 +6,7 @@ import abc
 class Error(ClObject):
 
     @abc.abstractmethod
-    def error(self, predicted, expected):
+    def error_value(self, predicted, expected):
         pass
 
     @abc.abstractmethod
@@ -24,7 +24,7 @@ class Error(ClObject):
 
 class MeanSquaredError(Error):
 
-    def error(self, predicted, expected):
+    def error_value(self, predicted, expected):
         predicted = self.convert_to_arrays(predicted)
         expected = self.convert_to_arrays(expected)
         Error.error(self, predicted, expected)
