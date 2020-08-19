@@ -1,19 +1,19 @@
 import pyopencl.array as pycl_array
 import pyopencl.clmath as pycl_math
 import numpy as np
-from ClObject import Code, ClObject
+from ClObject import Code, ClSingleton
 from Activations import *
 from Error import *
 
 '''Gonna put different types of layers in this'''
 
 
-class LayerBase(ClObject):
-    def __init__(self, queue, context, size, activation=RELU):
-        ClObject.__init__(self, queue, context)
+class LayerBase:
+    def __init__(self, size, activation=RELU):
+        self.cl = ClSingleton.get_instance()
         self.layer_size = np.int32(size)
         self.layer = pycl_array.to_device(
-            queue,
+            self.cl.queue,
             np.random.uniform(-1, 1, size).astype(np.float32)
         )
         self.activation = activation
@@ -30,8 +30,8 @@ class LayerBase(ClObject):
 
 class Layer(LayerBase):
 
-    def __init__(self, queue, context, n, activation=RELU):
-        LayerBase.__init__(self, queue, context, n, activation)
+    def __init__(self, n, activation=RELU):
+        LayerBase.__init__(self, n, activation)
         self.next_layer = None      # object for next layer
         self.weights = None         # pycl_array
         self.next_layer_size = None
@@ -46,7 +46,7 @@ class Layer(LayerBase):
             raise ValueError("The weights connecting to the next layer haven't been defined yet.")
 
         if self.code is None:
-            raise ValueError("Code from clForward text file needs to be added so that it runs on"
+            raise ValueError("Code from kernel.cl text file needs to be added so that it runs on"
                              "GPU")
 
         if _input is not None:
@@ -55,17 +55,16 @@ class Layer(LayerBase):
             self.layer.set(_input)
 
         # print(type(self.layer_size), type(self.next_layer.layer_size))
-
+        # print(self.weights.get() is None)
         self.code.program.forward(
-            self.queue,
+            self.cl.queue,
             self.next_layer.shape,
             None,
             self.layer_size,
             self.layer.data,
             self.weights.data,
             self.bias.data,
-            self.next_layer.data,
-            np.int32(self.activation)
+            self.next_layer.data
         )
 
         # self.next_layer.activate()
@@ -81,6 +80,9 @@ class Layer(LayerBase):
     def set_weights(self, weights):
         if self.next_layer is None:
             raise ValueError("Please set next_layer first")
+        if not isinstance(weights, pycl_array.Array):
+            raise TypeError(f"Weights should be of type {pycl_array.Array}"
+                            f"provided {type(weights)}")
         if len(weights) != self.next_layer_size*self.layer_size:
             raise IndexError(f"The size does't fit please make sure it has shape"
                              f" {self.layer_size}*{self.next_layer_size}")
@@ -107,8 +109,8 @@ class Layer(LayerBase):
 class Output(LayerBase):
 
     def __init__(self, queue, context, size, activation=SOFTMAX):
-        LayerBase.__init__(self, queue, context, size, activation)
-        self.error = MeanSquaredError(queue, context)
+        LayerBase.__init__(self, size, activation)
+        self.error = MeanSquaredError()
 
     def get_error_value(self, expected):
         return self.error.error_value(self.layer, expected)

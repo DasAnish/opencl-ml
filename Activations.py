@@ -1,15 +1,17 @@
 import pyopencl.array as pycl_array
 import pyopencl.clmath as pycl_math
 import numpy as np
-from to_remove.ClObject import ClObject
+from ClObject import ClSingleton
 
 BINARY_STEP, LINEAR, SIGMOID, TANH, RELU, LEAKY_RELU, SOFTMAX = (i for i in range(7))
+## Could be moved into the cl code
 
 
-class Activation(ClObject):
+class Activation:
 
-    def __init__(self, queue, context, activation=RELU, linear_gradient=1, leak=0.01):
-        ClObject.__init__(self, queue, context)
+    def __init__(self, activation=RELU, linear_gradient=1, leak=0.01):
+        # ClObject.__init__(self, queue, context)
+        self.cl = ClSingleton.get_instance()
         self.type = activation
 
         # values for the funcitons may be optimized in hyperparameter tuning
@@ -35,7 +37,7 @@ class Activation(ClObject):
             array,
             pycl_array.to_device(self.queue, np.ones(array.shape).astype(np.float32)),
             pycl_array.zeros_like(array.shape),
-            queue=self.qeueue
+            queue=self.cl.qeueue
         )
 
     def linear(self, array):
@@ -52,7 +54,7 @@ class Activation(ClObject):
             array,
             array,
             pycl_array.zeros_like(array),
-            queue=self.queue
+            queue=self.cl.queue
         )
 
     def leaky_relu(self, array):
@@ -60,7 +62,7 @@ class Activation(ClObject):
             array,
             array,
             self.leak*array,
-            self.queue
+            self.cl.queue
         )
 
     def softmax(self, array):
