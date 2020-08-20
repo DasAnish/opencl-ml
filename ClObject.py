@@ -26,22 +26,23 @@ class ClSingleton:
 
 class Code:
 
+    __instance = None
+
+    @staticmethod
+    def get_instance():
+        if Code.__instance is None:
+            Code()
+        return Code.__instance
+
     def __init__(self):
-        self.cl = ClSingleton.get_instance()
-        self.code = None
-        self.program = None
-
-    def build(self):
-        if self.code is None:
-            raise ValueError("There is no code defined")
-        if self.program is None:
-            self.program = cl.Program(self.cl.context, self.code).build()
-
-    def set_code(self, path_to_file=None, code=None):
-        if path_to_file is None and code is None:
-            raise ValueError("Invalid arguments")
-        if path_to_file is None:
-            self.code = code
+        if Code.__instance is not None:
+            raise Exception("This is a singleton class")
         else:
-            with open(path_to_file, 'r') as f:
-                self.code = f.read()
+            Code.__instance = self
+
+        self.cl = ClSingleton.get_instance()
+
+        with open('kernel.cl', 'r') as f:
+            self.code = f.read()
+
+        self.program = cl.Program(self.cl.context, self.code).build()
