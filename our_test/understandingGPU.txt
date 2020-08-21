@@ -1,0 +1,2 @@
+So from what I understand is that there are 8 compute units and each seems to work completely
+parallely to the others and we can't do anything about that
