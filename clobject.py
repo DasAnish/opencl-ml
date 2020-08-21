@@ -1,5 +1,6 @@
 import pyopencl as cl
 import pyopencl.array as pycl_array
+import os
 
 # TODO: make this a Singleton class
 
@@ -41,8 +42,9 @@ class Code:
             Code.__instance = self
 
         self.cl = ClSingleton.get_instance()
+        path_to_file = os.path.join('D:', 'Desktop', 'Diss', 'opencl-ml', 'kernel.cl')
 
-        with open('kernel.cl', 'r') as f:
+        with open('D:\\Desktop\\Diss\\opencl-ml\\kernel.cl', 'r') as f:
             self.code = f.read()
 
         self.program = cl.Program(self.cl.context, self.code).build()

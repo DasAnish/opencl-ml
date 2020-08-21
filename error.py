@@ -1,4 +1,4 @@
-from ClObject import ClSingleton
+from clobject import ClSingleton
 import pyopencl.array as pycl_array
 import abc
 
@@ -34,7 +34,7 @@ class MeanSquaredError(Error):
         out = predicted - expected
         return pycl_array.dot(out, out) / 2
 
-    def error_derivative(self, predicted, expected):
+    def error_derivative(self, predicted, expected) -> pycl_array.Array:
         predicted = self.convert_to_arrays(predicted)
         expected = self.convert_to_arrays(expected)
 

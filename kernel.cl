@@ -35,7 +35,7 @@ __kernel void matrix_vector_mul(const unsigned int size,
     output[glb] = acc;
 
   } else {
-    output[glb] = bias[glb];
+    output[glb] = 0.0f;
 
     for (int k=0; k<size; k++) {
       output[glb] += input[k]*weights[k];
@@ -83,5 +83,40 @@ __kernel void transpose(
 
   if (globalX < _width && globalY < _height)
     output[globalX * height + globalY] = block[localY][localX];
+
+}
+
+__kernel void activate(
+    __global const float *input,
+    __global float *output,
+    const unsigned int activation_type
+) {
+
+  const int i = get_global_id(0);
+  output[i] = input[i];
+
+  if (activation_type == 0) { // BINARY_STEP
+    if (output[i] < 0)
+      output[i] = 0;
+    else
+      output[i] = 1;
+  }
+  else if (activation_type == 2) { // SIGMOID
+    output[i] = 1 / (1 + exp(-output[i]));
+  }
+  else if (activation_type == 3) { // TANH
+    output[i] = tanh(output[i]);
+  }
+  else if (activation_type == 4) { // RELU
+    if (output[i] < 0)
+      output[i] = 0;
+  }
+  else if (activation_type == 5) { // LEAKY_RELU
+    if (output[i] < 0)
+      output[i] = 0.01*output[i];
+  }
+  else if (activation_type == 6) { // SOFTMAX
+     output[i] = exp(output[i]);
+  }
 
 }
