@@ -136,17 +136,21 @@ class Output(LayerBase):
     def __init__(self, size: int):
         LayerBase.__init__(self, size)
         self.error = MeanSquaredError()
+        self.expected: pycl_array.Array = pycl_array.to_device(
+            self.cl.queue,
+            np.zeros(size).astype(np.float32)
+        )
 
-    def get_error_value(self, expected: pycl_array.Array):
-        return self.error.error_value(self.layer, expected)
+    def get_error_value(self):
+        return self.error.error_value(self.layer, self.expected)
 
-    def get_error_derivative(self, expected: pycl_array.Array) -> pycl_array.Array:
-        return self.error.error_derivative(self.layer, expected)
+    def get_error_derivative(self) -> pycl_array.Array:
+        return self.error.error_derivative(self.layer, self.expected)
 
 
 class Activation(LayerBase):
 
-    def __init__(self, size, activation_type=RELU):
+    def __init__(self, size, activation_type=SIGMOID):
         LayerBase.__init__(self, size)
 
         self.linear_gradient: int = 1
@@ -171,7 +175,8 @@ class Activation(LayerBase):
 
         self.activation_derivatives = {
             RELU: self.relu_derivative,
-            SOFTMAX: self.softmax_derivative
+            SOFTMAX: self.softmax_derivative,
+            SIGMOID: self.sigmoid_derivative
         }
 
     def set_next_layer(self, layer) -> None:
@@ -191,10 +196,16 @@ class Activation(LayerBase):
         return self.activation_derivatives[self.activation_type](_del)
 
     def relu_derivative(self, _del: pycl_array.Array) -> pycl_array.Array:
+        print(__name__, _del)
         return _del
 
     def softmax_derivative(self, _del: pycl_array.Array) -> pycl_array.Array:
+        print(__name__, _del)
         return _del * self.next_layer
+
+    def sigmoid_derivative(self, _del:pycl_array.Array) -> pycl_array.Array:
+        print(__name__, _del)
+        return _del * self.next_layer * (1 + self.next_layer)
 
     def forward(self) -> None:
         self.code.program.activate(
@@ -207,7 +218,11 @@ class Activation(LayerBase):
         )
 
         if self.activation_type == SOFTMAX:
-            self.next_layer /= pycl_array.sum(self.next_layer)
+            array = self.next_layer.get()
+            # print(array)
+            array = np.exp(array)
+            array = array/np.sum(array)
+            self.next_layer.set(array)
 
         # print("printing forward from Activation: ", self.next_layer)
 
