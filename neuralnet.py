@@ -52,8 +52,9 @@ class NeuralNet:
 
     def forward(self, _input: np.array) -> None:
         if len(_input) != self.input_size:
-            raise ValueError("Provided input is not of the correct size")
+            raise ValueError(f"Provided input size: {len(_input)} is not of the correct size: {self.input_size}")
 
+        # print(len(_input), len(self.layers[0].layer))
         self.layers[0].layer.set(_input)
         for layer in self.layers:
             layer.forward()
@@ -69,6 +70,23 @@ class NeuralNet:
                f'*********************************\n')
         return st
 
+    def fit(self, x, y, batch_size, num_epochs, len_dataset):
+        shuffled_range = np.arange(len_dataset)
+        np.random.shuffle(shuffled_range)
+
+        for epoch in range(num_epochs):
+            current_batch = []
+
+            for j in range(batch_size):
+                i = (batch_size*epoch + j) % len_dataset
+                y_i = y[shuffled_range[i]]
+                x_i = x[shuffled_range[i]]
+                current_batch.append((x_i, y_i))
+
+            epoch_error = self.train_batch(current_batch)
+            print(f'total error: {epoch_error} in epoch: {epoch+1}')
+            break
+
     def train(self, xys, batch_size, num_epochs) -> None:
         # both Xs and ys are vectors
         np.random.shuffle(xys)
@@ -82,6 +100,7 @@ class NeuralNet:
 
             epoch_error = self.train_batch(current_batch)
             print(f'total error: {epoch_error} in epoch: {epoch+1}')
+            break
 
     def train_batch(self, xys) -> float:
         for layer in self.layers[:-1:2]:
@@ -102,24 +121,27 @@ class NeuralNet:
         # total_error_derivative = []
         for x, y in xys:
             self.forward(x)
-            total_error += self.output_layer.get_error_value(y)
+            self.output_layer.expected.set(y)
+            total_error += self.output_layer.get_error_value()
+            # print(total_error, end=', ')
             # Now we have del^l
-            error_vec = self.output_layer.get_error_derivative(y)
+            error_vec = self.output_layer.get_error_derivative()
             # print(x, y, self.output_layer.layer, error_vec)
 
             for layer_index in range(-2, -len(self.layers) - 1, -1):
                 layer = self.layers[layer_index]
                 error_vec = layer.backward(error_vec)
 
-
         # print(self)
-        self.update_weights()
+        self.update_weights(total_error, len(xys))
         return total_error
 
-    def update_weights(self) -> None:
-        for layer in self.layers[:-1:2]:
-            layer.weights -= 0.01*layer.weights_del
-            layer.bias -= 0.01*layer.bias_del
+    def update_weights(self, error, batch_size) -> None:
+        for layer in self.layers[::2]:
+            print(layer.weights_del)
+            print(layer.bias_del)
+            layer.weights -= layer.weights_del
+            layer.bias -= layer.bias_del
 
     def predict(self, X):
         self.forward(X)

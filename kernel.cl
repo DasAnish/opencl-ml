@@ -53,7 +53,7 @@ __kernel void weights_del(
   const int i = get_global_id(0);
   const int j = get_global_id(1);
 
-  weights_del_values[j*size + i] += del_values[j]*z_values[i];
+  weights_del_values[j*size + i] = del_values[j]*z_values[i];
 
 }
 
