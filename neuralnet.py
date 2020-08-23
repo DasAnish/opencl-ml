@@ -62,12 +62,7 @@ class NeuralNet:
     def __str__(self):
         st = ''
         for i, layer in enumerate(self.layers):
-            st += (f'Layer[{i+1}]   '
-                   f'Values:\n{layer.layer}\n'
-                   f'***********************************\n')
-        st += (f'Output: '
-               f'Values: \n {self.output_layer.layer}\n'
-               f'*********************************\n')
+            st += f"{i} {layer}\n******************************\n"
         return st
 
     def fit(self, x, y, batch_size, num_epochs, len_dataset):
@@ -104,7 +99,10 @@ class NeuralNet:
 
     def train_batch(self, xys) -> float:
         for layer in self.layers[:-1:2]:
-            layer.weights_del: pycl_array.Array = pycl_array.zeros_like(layer.weights)
+            layer.weights_del: pycl_array.Array = pycl_array.to_device(
+                self.cl.queue,
+                np.zeros(layer.next_layer_size * layer.layer_size).astype(np.float32)
+            )
             layer.transposed: pycl_array.Array = pycl_array.zeros_like(layer.weights)
             self.code.program.transpose(
                 self.cl.queue,
@@ -128,7 +126,7 @@ class NeuralNet:
             error_vec = self.output_layer.get_error_derivative()
             # print(x, y, self.output_layer.layer, error_vec)
 
-            for layer_index in range(-2, -len(self.layers) - 1, -1):
+            for layer_index in range(-1, -len(self.layers) - 1, -1):
                 layer = self.layers[layer_index]
                 error_vec = layer.backward(error_vec)
 
@@ -138,8 +136,8 @@ class NeuralNet:
 
     def update_weights(self, error, batch_size) -> None:
         for layer in self.layers[::2]:
-            print(layer.weights_del)
-            print(layer.bias_del)
+            # print(layer.weights_del)
+            # print(layer.bias_del)
             layer.weights -= layer.weights_del
             layer.bias -= layer.bias_del
 

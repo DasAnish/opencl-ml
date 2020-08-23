@@ -23,6 +23,9 @@ class LayerBase:
     def __len__(self):
         return self.layer_size
 
+    def __str__(self):
+        return str(__class__) + str(self.layer)
+
 
 class Layer(LayerBase):
 
@@ -38,6 +41,9 @@ class Layer(LayerBase):
         self.weights_del: pycl_array.Array = None
         self.bias_del: pycl_array.Array = None
         self.transposed: pycl_array.Array = None
+
+    def __str__(self):
+        return str(__class__) + str(self.layer)
 
     def forward(self, _input: np.array=None) -> None:
         if self.next_layer is None:
@@ -86,7 +92,10 @@ class Layer(LayerBase):
             self.weights_del.data
         )
 
-        next_del: pycl_array.Array = pycl_array.zeros_like(self.layer)
+        next_del: pycl_array.Array = pycl_array.to_device(
+            self.cl.queue,
+            np.zeros(self.layer_size).astype(np.float32)
+        )
 
         self.code.program.matrix_vector_mul(
             self.cl.queue,
@@ -141,6 +150,9 @@ class Output(LayerBase):
             np.zeros(size).astype(np.float32)
         )
 
+    def __str__(self):
+        return str(__class__) + str(self.layer)
+
     def get_error_value(self):
         return self.error.error_value(self.layer, self.expected)
 
@@ -163,21 +175,24 @@ class Activation(LayerBase):
         # self._del = None
 
         ## the functions in a dict
-        # self.activation_functions = {
-        #     BINARY_STEP: self.binary_step,
-        #     LINEAR: self.linear,
-        #     SIGMOID: self.sigmoid,
-        #     TANH: self.tanh,
-        #     RELU: self.relu,
-        #     LEAKY_RELU: self.leaky_relu,
-        #     SOFTMAX: self.softmax
-        # }
+        self.activation_functions = {
+            BINARY_STEP: self.binary_step,
+            LINEAR: self.linear,
+            SIGMOID: self.sigmoid,
+            TANH: self.tanh,
+            RELU: self.relu,
+            LEAKY_RELU: self.leaky_relu,
+            SOFTMAX: self.softmax
+        }
 
         self.activation_derivatives = {
             RELU: self.relu_derivative,
             SOFTMAX: self.softmax_derivative,
             SIGMOID: self.sigmoid_derivative
         }
+
+    def __str__(self):
+        return str(__class__) + str(self.layer)
 
     def set_next_layer(self, layer) -> None:
         if not isinstance(layer, pycl_array.Array):
@@ -189,77 +204,77 @@ class Activation(LayerBase):
                              f"provided: {len(layer)}.")
 
         self.next_layer = layer
-        # self.next_layer_size = np.int32(len(layer))
 
     def backward(self, _del) -> pycl_array.Array:
-        # print(2, len(self.layer), len(_del))
         return self.activation_derivatives[self.activation_type](_del)
 
     def relu_derivative(self, _del: pycl_array.Array) -> pycl_array.Array:
-        print(__name__, _del)
         return _del
 
     def softmax_derivative(self, _del: pycl_array.Array) -> pycl_array.Array:
-        print(__name__, _del)
         return _del * self.next_layer
 
     def sigmoid_derivative(self, _del:pycl_array.Array) -> pycl_array.Array:
-        print(__name__, _del)
-        return _del * self.next_layer * (1 + self.next_layer)
+        ret = _del
+        ret = ret * self.next_layer
+        ret = ret * (1 + self.next_layer)
+        return ret
 
     def forward(self) -> None:
-        self.code.program.activate(
-            self.cl.queue,
-            self.next_layer.shape,
-            None,
-            self.layer.data,
-            self.next_layer.data,
-            self.activation_type
-        )
+        self.next_layer = self.activation_functions[self.activation_type]()
+        # self.code.program.activate(
+        #     self.cl.queue,
+        #     self.next_layer.shape,
+        #     None,
+        #     self.layer.data,
+        #     self.next_layer.data,
+        #     self.activation_type
+        # )
+        # print("ACTIVATION", self.activation_type)
 
-        if self.activation_type == SOFTMAX:
-            array = self.next_layer.get()
-            # print(array)
-            array = np.exp(array)
-            array = array/np.sum(array)
-            self.next_layer.set(array)
+        # if self.activation_type == SOFTMAX:
+        #     array = self.next_layer.get()
+        #     # print(array)
+        #     array = np.exp(array)
+        #     array = array/np.sum(array)
+        #     self.next_layer.set(array)
 
         # print("printing forward from Activation: ", self.next_layer)
 
-    # def binary_step(self) -> pycl_array.Array:
-    #     return pycl_array.if_positive(
-    #         self.layer,
-    #         pycl_array.to_device(self.cl.queue, np.ones(self.layer.shape).astype(np.float32)),
-    #         pycl_array.zeros_like(self.layer.shape),
-    #         queue=self.cl.qeueue
-    #     )
-    #
-    # def linear(self) -> pycl_array.Array:
-    #     return self.layer * self.linear_gradient
-    #
-    # def sigmoid(self) -> pycl_array.Array:
-    #     return 1 / (1 + pycl_math.exp(-self.layer, self.cl.queue))
-    #
-    # def tanh(self) -> pycl_array.Array:
-    #     return pycl_math.tanh(self.layer, self.cl.queue)
-    #
-    # def relu(self) -> pycl_array.Array:
-    #     return pycl_array.if_positive(
-    #         self.layer,
-    #         self.layer,
-    #         pycl_array.zeros_like(self.layer),
-    #         queue=self.cl.queue
-    #     )
-    #
-    # def leaky_relu(self) -> pycl_array.Array:
-    #     return pycl_array.if_positive(
-    #         self.layer,
-    #         self.layer,
-    #         self.leak * self.layer,
-    #         self.cl.queue
-    #     )
-    #
-    # def softmax(self) -> pycl_array.Array:
-    #     ret = pycl_math.exp(self.layer, self.cl.queue)
-    #     ret /= pycl_array.sum(ret)
-    #     return ret
+    def binary_step(self) -> pycl_array.Array:
+        return pycl_array.if_positive(
+            self.layer,
+            pycl_array.to_device(self.cl.queue, np.ones(self.layer.shape).astype(np.float32)),
+            pycl_array.zeros_like(self.layer.shape),
+            queue=self.cl.qeueue
+        )
+
+    def linear(self) -> pycl_array.Array:
+        return self.layer * self.linear_gradient
+
+    def sigmoid(self) -> pycl_array.Array:
+        return 1 / (1 + pycl_math.exp(-self.layer, self.cl.queue))
+
+    def tanh(self) -> pycl_array.Array:
+        return pycl_math.tanh(self.layer, self.cl.queue)
+
+    def relu(self) -> pycl_array.Array:
+        return pycl_array.if_positive(
+            self.layer,
+            self.layer,
+            pycl_array.zeros_like(self.layer),
+            queue=self.cl.queue
+        )
+
+    def leaky_relu(self) -> pycl_array.Array:
+        return pycl_array.if_positive(
+            self.layer,
+            self.layer,
+            self.leak * self.layer,
+            self.cl.queue
+        )
+
+    def softmax(self) -> pycl_array.Array:
+        ret = pycl_math.exp(self.layer, self.cl.queue)
+        ret /= pycl_array.sum(ret)
+        return ret

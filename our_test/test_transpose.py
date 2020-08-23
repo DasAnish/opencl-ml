@@ -7,8 +7,8 @@ import numpy  as np
 context = cl.create_some_context()
 queue = cl.CommandQueue(context)
 
-H=np.int32(5000)
-W=np.int32(5000)
+H=np.int32(10)
+W=np.int32(10)
 
 matrix = cl_array.to_device(
     queue,
@@ -26,7 +26,7 @@ transposed_np = np.transpose(matrix_np).reshape(W*H, 1)
 
 
 @time_this_function
-def opencl():
+def opencl(matrix, transposed, W, H):
     program.transpose(
         queue,
         (W, H),
@@ -45,13 +45,11 @@ def numpy():
 
 if __name__ == '__main__':
 
-    snn = 0
-    snp = 0
+    matrix_np = matrix.get()
+    opencl(matrix=matrix, transposed=transposed, W=W, H=H)
+    opencl(matrix=transposed, transposed=matrix, W=H, H=W)
 
-    for i in range(200):
-        snn += opencl()
-        # print(f'{i+1} OPENCL took {snn} | ', end=" ")
-        snp += numpy()
-        # print(f'{i+1} NUMPY took {snp}')
+    matrix_T_T = matrix.get()
 
-        print(f'Ratio : {snp/snn}')
+    for i in range(H*W):
+        print(matrix_np[i], matrix_T_T[i])

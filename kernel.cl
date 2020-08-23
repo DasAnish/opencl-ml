@@ -50,10 +50,10 @@ __kernel void weights_del(
     __global float *weights_del_values
 ) {
 
-  const int i = get_global_id(0);
-  const int j = get_global_id(1);
+  const int i = get_global_id(0); // max is layer_size
+  const int j = get_global_id(1); // max is next_layer_size
 
-  weights_del_values[j*size + i] = del_values[j]*z_values[i];
+  weights_del_values[j*size + i] += del_values[j]*z_values[i];//j*i;//
 
 }
 
@@ -86,37 +86,37 @@ __kernel void transpose(
 
 }
 
-__kernel void activate(
-    __global const float *input,
-    __global float *output,
-    const unsigned int activation_type
-) {
-
-  const int i = get_global_id(0);
-  output[i] = input[i];
-
-  if (activation_type == 0) { // BINARY_STEP
-    if (output[i] < 0)
-      output[i] = 0;
-    else
-      output[i] = 1;
-  }
-  else if (activation_type == 2) { // SIGMOID
-    output[i] = 1 / (1 + exp(-output[i]));
-  }
-  else if (activation_type == 3) { // TANH
-    output[i] = tanh(output[i]);
-  }
-  else if (activation_type == 4) { // RELU
-    if (output[i] < 0)
-      output[i] = 0;
-  }
-  else if (activation_type == 5) { // LEAKY_RELU
-    if (output[i] < 0)
-      output[i] = 0.01*output[i];
-  }
-  else if (activation_type == 6) { // SOFTMAX
-     output[i] = exp(output[i]);
-  }
-
-}
+//__kernel void activate(
+//    __global const float *input,
+//    __global float *output,
+//    const unsigned int activation_type
+//) {
+//
+//  const int i = get_global_id(0);
+//  output[i] = input[i];
+//
+//  if (activation_type == 0) { // BINARY_STEP
+//    if (output[i] < 0)
+//      output[i] = 0;
+//    else
+//      output[i] = 1;
+//  }
+//  else if (activation_type == 2) { // SIGMOID
+//    output[i] = input[i];
+//  }
+//  else if (activation_type == 3) { // TANH
+//    output[i] = tanh(output[i]);
+//  }
+//  else if (activation_type == 4) { // RELU
+//    if (output[i] < 0)
+//      output[i] = 0;
+//  }
+//  else if (activation_type == 5) { // LEAKY_RELU
+//    if (output[i] < 0)
+//      output[i] = 0.01*output[i];
+//  }
+//  else if (activation_type == 6) { // SOFTMAX
+//     output[i] = exp(output[i]);
+//  }
+//
+//}
