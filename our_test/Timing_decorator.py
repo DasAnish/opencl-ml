@@ -29,3 +29,14 @@ def time_this_function(func):
     return wrapper_func
 
 
+def print_name_and_time(func):
+    def wrapper_func(*args, **kwargs):
+        print(func.__name__, end='\t')
+        start = time.time()
+        func(*args, **kwargs)
+        end=time.time()
+
+        return end - start
+    return wrapper_func
+
+

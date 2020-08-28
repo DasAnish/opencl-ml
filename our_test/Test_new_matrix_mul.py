@@ -7,55 +7,59 @@ import threading
 context = cl.create_some_context()  # Initialize the Context
 queue = cl.CommandQueue(context)  # Instantiate a Queue
 
-N=256
-M=256
-_input = np.arange(N)
-input_layer = pycl_array.to_device(queue, np.where(_input%2, 1, 0).astype(np.float32))
-print(np.sum(input_layer.get()))
+N=256*10
+M=256*10
+input_layer = pycl_array.to_device(queue, np.zeros(N).astype(np.float32))
 output_layer = pycl_array.to_device(queue, np.zeros(M).astype(np.float32))
 matrix = pycl_array.to_device(queue, np.ones(M*N).astype(np.float32))
-bias = pycl_array.to_device(queue, np.zeros_like(output_layer).astype(np.float32))
+l = np.random.rand(N).astype(np.float32)
 
-mat = np.arange(M)
-for i in range(M-1):
-    mat = np.concatenate([mat, np.arange(M)])
-mat = mat.astype(np.float32)
-matrix.set(mat)
+code = '''
 
+__kernel void naive(
+    const unsigned int n,
+   __global const float *input,
+   __global const float *matrix,
+   __global float *output)
+{
+  const int i = get_global_id(0);
+  output[i] = 0;
+  
+  for (int k=0; k < n; k++) {
+    output[i] += input[k] * matrix[i*n + k];
+  }  
+}
 
-# because = pycl_array.to_device(queue, np.ones(256).astype(np.int32))
+#define S 256
 
-old_code= '''
-#define TS 256
-
-__kernel void forward(const unsigned int size,
+__kernel void ver1(const unsigned int size,
  __global const float *input,
  __global const float *weights,
- __global const float *bias,
  __global float *output)
 {
 
   const int glb = get_global_id(0);
   const int loc = get_local_id(0);
   const int grp = get_group_id(0);
-  float acc = bias[glb];
+  float acc = 0.0f;
+  output[glb] = 0.0f;
 
-  __local float vec_buffer[TS];
-  __local float mat_buffer[TS];
+  __local float vec_buffer[S];
+  __local float mat_buffer[S];
 
-  const int iterations = size/TS;
+  const int iterations = size/S;
   int iter = 0;
 
   if (iterations) {
     for (; iter < iterations; iter++) {
 
-      const int tiledIter = TS*iter + loc;
+      const int tiledIter = S*iter + loc;
       vec_buffer[loc] = input[tiledIter];
       mat_buffer[loc] = weights[glb*size + tiledIter];
 
       barrier(CLK_LOCAL_MEM_FENCE);
 
-      for (int k=0; k<TS; k++) {
+      for (int k=0; k<S; k++) {
         acc += vec_buffer[k]*mat_buffer[k];
       }
 
@@ -64,72 +68,179 @@ __kernel void forward(const unsigned int size,
     output[glb] = acc;
 
   } else {
-    output[glb] = bias[glb];
+    output[glb] = 0.0f;
 
     for (int k=0; k<size; k++) {
       output[glb] += input[k]*weights[k];
     }
   }
+}
+
+#define TS 8
+#define WPT 32
+#define ROW_DIM 0
+#define COL_DIM 1
+
+__kernel void matrix_vector_mul(
+    const unsigned int n,
+   __global const float *input,
+   __global const float *matrix,
+   __global float *output)
+{
+
+  __local float acc[WPT][TS];
+  for (int row=0; row<WPT; row++)
+    for(int col=0; col<TS; col++)
+      acc[row][col] = 0.0f;
+
+  const int loc_col = get_local_id(COL_DIM); // Max is TS
+  const int loc_row = get_local_id(ROW_DIM); // max is WPT
+  const int glb_row = get_global_id(ROW_DIM);
+  output[glb_row] = 0.0f;
+
+//  printf("row: %d, col: %d, global_row: %d", loc_row, loc_col, glb_row);
+
+  for (int it = 0; it < n/TS+1; it++) {
+
+    const int tiledIter = TS*it + loc_col;
+    if (tiledIter < n) {
+//      printf("I[tI]: %f|   tI: %d|   M[index]: %f|   index: %d|   input_size: %d",
+//       input[tiledIter], tiledIter, matrix[glb_row*n + tiledIter], glb_row*n + tiledIter, n);
+//      barrier(CLK_LOCAL_MEM_FENCE);
+      acc[loc_row][loc_col] +=  input[tiledIter] * matrix[glb_row*n + tiledIter];
+      barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+  }
+
+  int cols = get_local_size(COL_DIM);
+  while (cols > 1) {
+
+    cols >>= 1;
+    if (loc_col < cols) acc[loc_row][loc_col] += acc[loc_row][loc_col + cols];
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+  }
+
+  if (loc_col == 0) output[glb_row] += acc[loc_row][0];
 }'''
 
-with open('..\\kernel.cl', 'r') as f:
-    code = f.read()
-# print(code)
-# program = cl.Program(context, code).build()
-# old_program = cl.Program(context, old_code).build()
-#
-# print(output_layer)
-# print(input_layer)
-# print(matrix)
-# program.forward(queue, output_layer.shape, None, np.int32(N),
-#                 input_layer.data, matrix.data, bias.data, output_layer.data)
+custom_code = '''
+#define TS %(ts)d
+#define WPT %(wpt)d
+#define ROW_DIM 0
+#define COL_DIM 1
+__kernel void matrix_vector_mul(
+    const unsigned int n,
+   __global const float *input,
+   __global const float *matrix,
+   __global float *output)
+{
 
-# print(output_layer)
+  __local float acc[WPT][TS];
+  for (int row=0; row<WPT; row++)
+    for(int col=0; col<TS; col++)
+      acc[row][col] = 0.0f;
+
+  const int loc_col = get_local_id(COL_DIM); // Max is TS
+  const int loc_row = get_local_id(ROW_DIM); // max is WPT
+  const int glb_row = get_global_id(ROW_DIM);
+  output[glb_row] = 0.0f;
+
+//  printf("row: %d, col: %d, global_row: %d", loc_row, loc_col, glb_row);
+
+  for (int it = 0; it < n/TS+1; it++) {
+
+    const int tiledIter = TS*it + loc_col;
+    if (tiledIter < n) {
+//      printf("I[tI]: %f|   tI: %d|   M[index]: %f|   index: %d|   input_size: %d",
+//       input[tiledIter], tiledIter, matrix[glb_row*n + tiledIter], glb_row*n + tiledIter, n);
+//      barrier(CLK_LOCAL_MEM_FENCE);
+      acc[loc_row][loc_col] +=  input[tiledIter] * matrix[glb_row*n + tiledIter];
+      barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+  }
+
+  int cols = get_local_size(COL_DIM);
+  while (cols > 1) {
+
+    cols >>= 1;
+    if (loc_col < cols) acc[loc_row][loc_col] += acc[loc_row][loc_col + cols];
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+  }
+
+  if (loc_col == 0) output[glb_row] += acc[loc_row][0];
+}
+'''
+
+program = cl.Program(context, code).build()
 
 matrix_np = matrix.get().reshape(N, M)
-# # print(matrix_np.shape)
-# bias_np = bias.get()
+
+from our_test.Timing_decorator import *
+
+@print_name_and_time
+def naive():
+    program.naive(
+        queue,
+        output_layer.shape,
+        None,
+        np.int32(N),
+        input_layer.data,
+        matrix.data,
+        output_layer.data
+    )
+
+@print_name_and_time
+def ver1():
+    program.ver1(
+        queue,
+        output_layer.shape,
+        None,
+        np.int32(N),
+        input_layer.data,
+        matrix.data,
+        output_layer.data
+    )
+
+@print_name_and_time
+def gemv():
+    program.matrix_vector_mul(
+        queue,
+        (M, 8),
+        (32, 8),
+        np.int32(N),
+        input_layer.data,
+        matrix.data,
+        output_layer.data
+    )
+
+@print_name_and_time
+def numpy():
+    # print('numpy', end='')
+    output = np.matmul(l, matrix_np)
 
 
-def old(layer, program, start):
-    input_layer.set(layer)
-    program.forward(queue, output_layer.shape, None, np.int32(N),
-                    input_layer.data, matrix.data, bias.data, output_layer.data)
-    end = time.time()
-    return end-start
-
-
-def opencl(layer, program, start):
-
-    input_layer.set(layer)
-    program.forward(queue, (M,), (256,), np.int32(N),
-                    input_layer.data, matrix.data, bias.data, output_layer.data)
-    # output =
-    end=time.time()
-    return end-start
-
-
-def NP(layer):
-    output_layer.set(np.matmul(matrix_np, layer))
-
-
-so = 0
-sn = 0
+funcs = {naive: 0.00001, ver1: 0.00001, gemv: 0.00001, numpy: 0.00001}
 
 for _ in range(100):
-    l=np.ones(N).astype(np.float32)
-    # print(l)
-    # sn += old(l, cl.Program(context, old_code).build(), time.time())
-    # print(f'Old_code: {_} {sn} o={output_layer[0]}')
-    # so += opencl(l, cl.Program(context, code).build(), time.time())
-    # print(f'Opencl:   {_} {so} o=\n{output_layer}')
 
-    NP(l)
-    print(output_layer)
+    l = np.random.rand(N).astype(np.float32)
+    input_layer.set(l)
+    sum_ = np.sum(l)
 
-    print('Actual Value:          \t\t\t  ', np.sum(l))
+    for func in funcs:
+        funcs[func] += func()
+        print('%0.6f'%(funcs[func]), output_layer[0] == sum_)
+
+    # print(f"naive: {funcs[naive]}   \nver1: {funcs[ver1]}   \nnumpy: {funcs[numpy]}   \nfinal: {funcs[matrix_vector_mul]}")
+    # print(f" ratio: {funcs[naive] / funcs[matrix_vector_mul]} || {funcs[ver1] / funcs[matrix_vector_mul]}"
+    #       f" || {funcs[numpy]/ funcs[matrix_vector_mul]}")
+    # print("output layer", output_layer[0], "actual value: ", sum_)
     print("###############################################################################")
-    break
+    # break
     # print(np.equal(l, output_layer.get()))
 
 '''

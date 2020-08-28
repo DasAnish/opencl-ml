@@ -8,14 +8,11 @@ code = Code.get_instance()
 I = 16
 O = 16
 nn = NeuralNet(layers=[
-    Layer(I),
-    Activation(O),
-    Layer(O),
-    Activation(I),
-    Layer(I),
-    Activation(O),
-    Output(O)
-])
+    Layer(I, SIGMOID),
+    Layer(O, SIGMOID),
+    Layer(I, SOFTMAX)],
+    output_layer=Output(O)
+)
 
 nn.output_layer.expected.set(np.random.rand(O).astype(np.float32))
 # nn.layers[0].layer.set(np.array([1, 0]).astype(np.float32))

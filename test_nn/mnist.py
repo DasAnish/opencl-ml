@@ -50,15 +50,16 @@ print("train and test one-hot vectors")
 # print("train and test dataset created")
 
 print("Building NN")
-nn= NeuralNet(layers=[
-    Layer(image_pixels),
-    Activation(32, activation_type=SIGMOID),
-    Layer(32),
-    Activation(16, activation_type=SIGMOID),
-    Layer(16),
-    Activation(no_of_different_labels, activation_type=SOFTMAX),
+nn= NeuralNet(
+    Layer(image_pixels, activation_type=SIGMOID),
+    Layer(32, activation_type=SIGMOID),
+    Layer(no_of_different_labels, activation_type=SOFTMAX),
     Output(no_of_different_labels)
-])
+)
 
-nn.fit(train_imgs, train_labels_one_hot, batch_size=1000, num_epochs=600, len_dataset = len_train_data)
+nn.fit(train_imgs,
+       train_labels_one_hot,
+       batch_size=1000,
+       num_epochs=600,
+       len_dataset = len_train_data)
 
