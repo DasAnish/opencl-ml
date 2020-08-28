@@ -8,8 +8,7 @@ from error import *
 BINARY_STEP, LINEAR, SIGMOID, TANH, RELU, LEAKY_RELU, SOFTMAX = (np.int32(i) for i in range(7))
 
 TS = 16
-WPT = 256 // 16
-'''Gonna put different types of layers in this'''
+WPT = 256 // TS
 
 
 class Layer:
@@ -41,24 +40,6 @@ class Layer:
         self.bias_del: pycl_array.Array = None
         self.transposed: pycl_array.Array = None
 
-        # self.activation_functions = {
-        #     BINARY_STEP: self.binary_step,
-        #     LINEAR: self.linear,
-        #     SIGMOID: self.sigmoid,
-        #     TANH: self.tanh,
-        #     RELU: self.relu,
-        #     LEAKY_RELU: self.leaky_relu,
-        #     SOFTMAX: self.softmax
-        # }
-        #
-        # self.activation_derivatives = {
-        #     RELU: self.relu_derivative,
-        #     SOFTMAX: self.softmax_derivative,
-        #     SIGMOID: self.sigmoid_derivative,
-        #     LEAKY_RELU: self.leaky_rely_derivative,
-        #     LINEAR: self.linear_derivative
-        # }
-
     def __len__(self):
         return self.layer_size
 
@@ -70,6 +51,7 @@ class Layer:
         return st
 
     def print_activation(self):
+        """A helper function for representing the NN."""
         if self.activation_type == 0:
             return ("BINARY_STEP")
         elif self.activation_type == 1:
@@ -86,6 +68,10 @@ class Layer:
             return ("SOFTMAX")
 
     def forward(self, _input: np.array=None) -> None:
+        """
+        Propagating the values to the next layer.
+        :param _input: the input vector (np.array).
+        """
         if self.next_layer is None:
             raise ValueError("Next Layer hasn't been defined yet. "
                              "Define it first.")
@@ -131,10 +117,15 @@ class Layer:
             else:
                 layer = np.ones(self.next_layer_size).astype(np.float32)
                 layer /= np.sum(layer)
+                raise ValueError
             self.next_layer.set(layer)
 
     def backward(self, _del: pycl_array.Array) -> pycl_array.Array:
-        # _del is delta
+        """
+        The Backpropagation algorithm implementation.
+        :param _del: The delta from the next layer.
+        :return: the delta value for previous layer.
+        """
 
         self.code.program.activation_derivative(
             self.cl.queue,
@@ -147,15 +138,15 @@ class Layer:
 
         self.bias_del += _del
 
-        # self.code.program.weights_del(
-        #     self.cl.queue,
-        #     (self.layer_size, self.next_layer_size),
-        #     (16, 16),
-        #     self.layer_size,
-        #     _del.data,
-        #     self.layer.data,
-        #     self.weights_del.data
-        # )
+        self.code.program.weights_del(
+            self.cl.queue,
+            (self.layer_size, self.next_layer_size),
+            (16, 16),
+            self.layer_size,
+            _del.data,
+            self.layer.data,
+            self.weights_del.data
+        )
 
         next_del: pycl_array.Array = pycl_array.to_device(
             self.cl.queue,
@@ -204,100 +195,9 @@ class Layer:
 
         self.bias = bias
 
-    # # def backward(self, _del) -> pycl_array.Array:
-    #
-    #
-    # def relu_derivative(self, _del: pycl_array.Array) -> pycl_array.Array:
-    #     return _del
-    #
-    # def softmax_derivative(self, _del: pycl_array.Array) -> pycl_array.Array:
-    #     ret = _del
-    #     ret = ret * self.next_layer
-    #     ret = ret * (1 - self.next_layer)
-    #     return ret
-    #
-    # def sigmoid_derivative(self, _del:pycl_array.Array) -> pycl_array.Array:
-    #     ret = _del
-    #     ret = ret * self.next_layer
-    #     ret = ret * (1 + self.next_layer)
-    #     # print(ret)
-    #     return ret
-    #
-    # def linear_derivative(self, _del:pycl_array.Array) -> pycl_array.Array:
-    #     return pycl_array.zeros_like(self.layer) + 1
-    #
-    # # def tanh_derivative(self, _del:pycl_array.Array) -> pycl_array.Array:
-    #
-    # def leaky_rely_derivative(self, _del:pycl_array.Array) -> pycl_array.Array:
-    #     derivative = pycl_array.if_positive(
-    #         self.layer,
-    #         pycl_array.zeros_like(self.layer)+1,
-    #         pycl_array.zeros_like(self.layer)+0.01,
-    #         queue=self.cl.queue
-    #     )
-    #     return _del * derivative
-    #
-    # def forward(self) -> None:
-    #     ret = self.activation_functions[self.activation_type]()
-    #     # print(ret)
-    #     self.next_layer.set(
-    #         ret.get()
-    #     )
-    #     # raise Error()
-    #     # print(self.next_layer)
-    #
-    # def binary_step(self) -> pycl_array.Array:
-    #     return pycl_array.if_positive(
-    #         self.layer,
-    #         pycl_array.to_device(self.cl.queue, np.ones(self.layer.shape).astype(np.float32)),
-    #         pycl_array.zeros_like(self.layer.shape),
-    #         queue=self.cl.queue
-    #     )
-    #
-    # def linear(self) -> pycl_array.Array:
-    #     return self.layer * self.linear_gradient
-    #
-    # def sigmoid(self) -> pycl_array.Array:
-    #     array = self.layer.get()
-    #     array = 1 / (1 + np.exp(-array))
-    #
-    #     return pycl_array.to_device(
-    #         self.cl.queue,
-    #         array
-    #     )
-    #
-    # def tanh(self) -> pycl_array.Array:
-    #     return pycl_math.tanh(self.layer, self.cl.queue)
-    #
-    # def relu(self) -> pycl_array.Array:
-    #     return pycl_array.if_positive(
-    #         self.layer,
-    #         self.layer,
-    #         pycl_array.zeros_like(self.layer),
-    #         queue=self.cl.queue
-    #     )
-    #
-    # def leaky_relu(self) -> pycl_array.Array:
-    #     return pycl_array.if_positive(
-    #         self.layer,
-    #         self.layer,
-    #         self.leak * self.layer,
-    #         queue=self.cl.queue
-    #     )
-    #
-    # def softmax(self) -> pycl_array.Array:
-    #     # ret = pycl_math.exp(self.layer, self.cl.queue)
-    #     ret = self.layer.get()
-    #     # ret = (np.arange(len(ret)) == np.argmax(ret)).astype(np.float32)
-    #     ret = np.exp(ret)
-    #     ret /= np.sum(ret)
-    #     ret = pycl_array.to_device(self.cl.queue,
-    #                                ret)
-    #     return ret
-
 
 class Output:
-
+    """Implementation of Output layer, contains an error instance."""
     def __init__(self, size: int):
         # LayerBase.__init__(self, size)
         self.cl: ClSingleton = ClSingleton.get_instance()

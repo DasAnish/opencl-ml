@@ -2,15 +2,15 @@ import pyopencl as cl
 import pyopencl.array as pycl_array
 import os
 
-# TODO: make this a Singleton class
-
 
 class ClSingleton:
+    """A singleton class that contains the context and queue objects needed to run code on the gpu"""
 
     __instance = None
 
     @staticmethod
     def get_instance():
+        """It will create an instance if there isn't one, else it will just return the instance."""
         if ClSingleton.__instance is None:
             ClSingleton()
         return ClSingleton.__instance
@@ -21,11 +21,13 @@ class ClSingleton:
         else:
             ClSingleton.__instance = self
 
+        # The variables needed.
         self.context = cl.create_some_context()
         self.queue = cl.CommandQueue(self.context)
 
 
 class Code:
+    """A singleton class that contains the program object to run code."""
 
     __instance = None
 
@@ -42,7 +44,7 @@ class Code:
             Code.__instance = self
 
         self.cl = ClSingleton.get_instance()
-        path_to_file = os.path.join('D:', 'Desktop', 'Diss', 'opencl-ml', 'kernel.cl')
+        # path_to_file = os.path.join('D:', 'Desktop', 'Diss', 'opencl-ml', 'kernel.cl')
 
         with open('D:\\Desktop\\Diss\\opencl-ml\\kernel.cl', 'r') as f:
             self.code = f.read()

@@ -8,7 +8,7 @@ from typing import List, Type
 
 
 class NeuralNet:
-
+    """Basic artificial neural net implementation"""
     def __init__(self, *layers):
         self.cl = ClSingleton.get_instance()
 
@@ -40,6 +40,11 @@ class NeuralNet:
         print("SETUP NN COMPLETE")
 
     def forward(self, _input: np.array) -> None:
+        """
+        Forward propagation implementation of a feed forward implementation.
+        :param _input:
+        :return:
+        """
         if len(_input) != self.input_size:
             raise ValueError(f"Provided input size: {len(_input)} is "
                              f"not of the correct size: {self.input_size}")
@@ -57,9 +62,11 @@ class NeuralNet:
                f"\n####################################################\n")
         return st
 
-    def fit(self, x, y, batch_size, num_epochs, len_dataset):
+    def fit(self, x, y, batch_size, num_epochs, len_dataset, print_every=100):
+        """Function to train on a dataset where you don't have a spliced set."""
         shuffled_range = np.arange(len_dataset)
         np.random.shuffle(shuffled_range)
+        total_error = 0
 
         for epoch in range(num_epochs):
             current_batch = []
@@ -71,9 +78,13 @@ class NeuralNet:
                 current_batch.append((x_i, y_i))
 
             epoch_error = self.train_batch(current_batch)
-            print(f'{epoch_error}/{epoch+1}|', end=" ")
+            total_error += epoch_error
+            if epoch % print_every == (print_every - 1):
+                print(f'({epoch+1}) {total_error}|')  # , self.output_layer)#
+                total_error = 0
 
     def train(self, xys, batch_size, num_epochs, print_every=100) -> None:
+        """Runs the training routine"""
         total_error = 0
 
         for epoch in range(num_epochs):
@@ -112,20 +123,20 @@ class NeuralNet:
                 layer = self.layers[layer_index]
                 error_vec = layer.backward(error_vec)
 
-        self.update_weights(0.025)
+        self.update_weights(0.01)
         return total_error
 
     def update_weights(self, lr) -> None:
         for layer in self.layers:
-            self.code.program.weights_del(
-                self.cl.queue,
-                (layer.layer_size, layer.next_layer_size),
-                (16, 16),
-                layer.layer_size,
-                layer.bias_del.data,
-                layer.layer.data,
-                layer.weights_del.data
-            )
+            # self.code.program.weights_del(
+            #     self.cl.queue,
+            #     (layer.layer_size, layer.next_layer_size),
+            #     (16, 16),
+            #     layer.layer_size,
+            #     layer.bias_del.data,
+            #     layer.layer.data,
+            #     layer.weights_del.data
+            # )
             layer.weights -= lr*layer.weights_del
             layer.bias -= lr*layer.bias_del
 
