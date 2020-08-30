@@ -4,6 +4,7 @@ import numpy as np
 from clobject import Code, ClSingleton
 # from Activations import *
 from error import *
+import copy
 
 BINARY_STEP, LINEAR, SIGMOID, TANH, RELU, LEAKY_RELU, SOFTMAX = (np.int32(i) for i in range(7))
 
@@ -195,13 +196,24 @@ class Layer:
 
         self.bias = bias
 
+    def __deepcopy__(self, memodict={}):
+        new_layer = Layer(self.layer_size, self.activation_type)
+
+        weights = self.weights.get()
+        bias = self.bias.get()
+
+        new_layer.weights = pycl_array.to_device(self.cl.queue, weights)
+        new_layer.bias = pycl_array.to_device(self.cl.queue, bias)
+
+        return new_layer
+
 
 class Output:
     """Implementation of Output layer, contains an error instance."""
     def __init__(self, size: int):
         # LayerBase.__init__(self, size)
         self.cl: ClSingleton = ClSingleton.get_instance()
-        self.error: Error = MeanSquaredError()
+        self.error: Loss = MeanSquaredError()
         self.layer_size: np.int32 = np.int32(size)
 
         self.expected: pycl_array.Array = pycl_array.to_device(

@@ -15,7 +15,7 @@ image_size = 28
 no_of_different_labels=10
 image_pixels = image_size**2
 
-data_path = os.path.join('data', 'mnist')
+data_path = os.path.join('..', 'data', 'mnist')
 
 train_data = np.loadtxt(os.path.join(data_path, 'mnist_train.csv'),
                         delimiter=',')
@@ -51,15 +51,24 @@ print("train and test one-hot vectors")
 
 print("Building NN")
 nn= NeuralNet(
-    Layer(image_pixels, activation_type=SIGMOID),
-    Layer(32, activation_type=SIGMOID),
-    Layer(no_of_different_labels, activation_type=SOFTMAX),
+    Layer(image_pixels, activation_type=TANH),
+    # Layer(256, activation_type=SIGMOID),
+    # Layer(512, activation_type=SIGMOID),
+    # Layer(256, activation_type=SIGMOID),
+    # Layer(256, activation_type=SIGMOID),
+    # Layer(128, activation_type=SIGMOID),
+    # Layer(128, activation_type=SIGMOID),
+    # Layer(64, activation_type=SIGMOID),
+    # Layer(64, activation_type=SIGMOID),
+    Layer(32, activation_type=SOFTMAX),
     Output(no_of_different_labels)
 )
 
+batch = 100
 nn.fit(train_imgs,
        train_labels_one_hot,
-       batch_size=1000,
-       num_epochs=600,
-       len_dataset = len_train_data)
+       batch_size=batch,
+       num_epochs=len_train_data//batch,
+       len_dataset = len_train_data,
+       print_every=10)
 
