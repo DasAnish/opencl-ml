@@ -52,14 +52,6 @@ print("train and test one-hot vectors")
 print("Building NN")
 nn= NeuralNet(
     Layer(image_pixels, activation_type=TANH),
-    # Layer(256, activation_type=SIGMOID),
-    # Layer(512, activation_type=SIGMOID),
-    # Layer(256, activation_type=SIGMOID),
-    # Layer(256, activation_type=SIGMOID),
-    # Layer(128, activation_type=SIGMOID),
-    # Layer(128, activation_type=SIGMOID),
-    # Layer(64, activation_type=SIGMOID),
-    # Layer(64, activation_type=SIGMOID),
     Layer(32, activation_type=SOFTMAX),
     Output(no_of_different_labels)
 )

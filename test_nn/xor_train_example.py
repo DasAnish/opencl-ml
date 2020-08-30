@@ -34,8 +34,7 @@ fun = lambda: nn.train(
     predict_after_every_batch=False
 )
 
-for i in range(100):
-    nn = fun()
+fun()
 
 
 print("**************FINAL PREDICTION***************************")

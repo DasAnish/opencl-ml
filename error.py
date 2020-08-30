@@ -3,8 +3,8 @@ import pyopencl.array as pycl_array
 import abc
 
 
-class Error:
-    """An abstract class that defines the template for all error classes."""
+class Loss:
+    """An abstract class that defines the template for all loss classes."""
 
     def __init__(self):
         self.cl = ClSingleton.get_instance()
@@ -29,7 +29,7 @@ class Error:
         return array
 
 
-class MeanSquaredError(Error):
+class MeanSquaredError(Loss):
 
     def error_value(self, predicted, expected):
         """Returns the absolute values of 1/2 * || expected - predicted ||."""
