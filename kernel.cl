@@ -113,9 +113,10 @@ __kernel void activation_derivative (
   else if (activation_type == 2) { // SIGMOID
     output[i] *= activation[i] * (1 + activation[i]);
   }
-//  else if (activation_type == 3) { // TANH
-//    output[i] = tanh(output[i]);
-//  }
+  else if (activation_type == 3) { // TANH
+    float v = cosh(activation[i]);
+    output[i] *= (1.0 / (v * v));
+  }
   else if (activation_type == 4) { // RELU
     if (activation[i] < 0)
       output[i] *= 0;
