@@ -1,15 +1,12 @@
 import pyopencl.array as pycl_array
 import pyopencl.clmath as pycl_math
 import numpy as np
-from clobject import Code, ClSingleton
+from clobject import *
 # from Activations import *
 from error import *
 import copy
 
 BINARY_STEP, LINEAR, SIGMOID, TANH, RELU, LEAKY_RELU, SOFTMAX = (np.int32(i) for i in range(7))
-
-TS = 16
-WPT = 256 // TS
 
 
 class Layer:
@@ -25,10 +22,7 @@ class Layer:
         self.leak: int = 0.01
 
         self.layer_size: np.int32 = np.int32(size)
-        self.layer: pycl_array.Array = pycl_array.to_device(
-            self.cl.queue,
-            np.zeros(size).astype(np.float32)
-        )
+        self.layer: pycl_array.Array = self.cl.zeros(size)
 
         self.next_layer: pycl_array.Array = None      # object for next layer
         self.weights: pycl_array.Array = None         # pycl_array [output] X [input]
@@ -79,10 +73,6 @@ class Layer:
         if self.weights is None:
             raise ValueError("The weights connecting to the next layer haven't been defined yet.")
 
-        if self.code is None:
-            raise ValueError("Code from kernel.cl text file needs to be added so that it runs on"
-                             "GPU")
-
         if _input is not None:
             if len(_input) != self.layer_size:
                 raise ValueError("Incorrect input size")
@@ -93,6 +83,7 @@ class Layer:
             (self.next_layer_size, TS),
             (WPT, TS),
             self.layer_size,
+            RESET_OUTPUT,
             self.layer.data,
             self.weights.data,
             self.next_layer.data
@@ -104,6 +95,7 @@ class Layer:
             self.cl.queue,
             self.next_layer.shape,
             None,
+            self.next_layer.data,
             self.next_layer.data,
             self.activation_type
         )
@@ -159,6 +151,7 @@ class Layer:
             self.layer.shape,
             None,
             self.next_layer_size,
+            RESET_OUTPUT,
             _del.data,
             self.transposed.data,
             next_del.data
@@ -202,8 +195,8 @@ class Layer:
         weights = self.weights.get()
         bias = self.bias.get()
 
-        new_layer.weights = pycl_array.to_device(self.cl.queue, weights)
-        new_layer.bias = pycl_array.to_device(self.cl.queue, bias)
+        new_layer.weights = self.cl.get_array(weights)
+        new_layer.bias = self.cl.get_array(bias)
 
         return new_layer
 
@@ -239,3 +232,5 @@ class Output:
 
     def get_error_derivative(self) -> pycl_array.Array:
         return self.error.error_derivative(self.layer, self.expected)
+
+

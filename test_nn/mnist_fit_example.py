@@ -52,7 +52,7 @@ print("train and test one-hot vectors")
 print("Building NN")
 nn= NeuralNet(
     Layer(image_pixels, activation_type=TANH),
-    Layer(32, activation_type=SOFTMAX),
+    Layer(512, activation_type=SOFTMAX),
     Output(no_of_different_labels)
 )
 

@@ -1,6 +1,11 @@
 import pyopencl as cl
 import pyopencl.array as pycl_array
+import numpy as np
 import os
+
+RESET_OUTPUT, CUMULATIVE_OUTPUT = (np.int32(i) for i in (1, 0))
+TS = 16
+WPT = 256 // TS
 
 
 class ClSingleton:
@@ -24,6 +29,27 @@ class ClSingleton:
         # The variables needed.
         self.context = cl.create_some_context()
         self.queue = cl.CommandQueue(self.context)
+
+    def zeros(self, shape) -> pycl_array.Array:
+        return pycl_array.to_device(
+            self.queue,
+            np.zeros(shape).astype(np.float32)
+        )
+
+    def random(self, shape) -> pycl_array.Array:
+        return pycl_array.to_device(
+            self.queue,
+            np.random.random(size=shape).astype(np.float32)
+        )
+
+    def uniform(self, low, high, shape) -> pycl_array.Array:
+        return pycl_array.to_device(
+            self.queue,
+            np.random.uniform(low=low, high=high, size=shape).astype(np.float32)
+        )
+
+    def get_array(self, array: np.array) -> pycl_array.Array:
+        return pycl_array.to_device(self.queue, array)
 
 
 class Code:
