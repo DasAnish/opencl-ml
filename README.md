@@ -2,6 +2,12 @@
 <h4 align="center">An AMD APU compatible machine learning library with pyopencl.</h4>
 
 <p align="center">
+    <img src="https://img.shields.io/github/languages/top/dasanish/pyopencl-ml"> •
+    <img src="https://img.shields.io/github/last-commit/dasanish/pyopencl-ml"> •
+</p>
+
+### Content
+<p align="center">
     <a href="#about"> About </a> •
     <a href="#installation"> Installation </a> •
     <a href="#usage"> Usage </a> •
@@ -58,7 +64,8 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 Please make sure to update tests as appropriate.
 
-## Authors
+## Author(s)
+- Anish Das (ad945@cam.ac.uk) [Github](https://github.com/DasAnish)
 
 ## License 
 [![License: MIT](https://img.shields.io/github/license/dasanish/pyopencl-ml)](https://choosealicense.com/licenses/mit/)
