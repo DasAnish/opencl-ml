@@ -5,6 +5,7 @@
 
 __kernel void matrix_vector_mul(
     const unsigned int n,
+    const unsigned int reset_output,
    __global const float *input,
    __global const float *matrix,
    __global float *output)
@@ -18,16 +19,12 @@ __kernel void matrix_vector_mul(
   const int loc_col = get_local_id(COL_DIM); // Max is TS
   const int loc_row = get_local_id(ROW_DIM); // max is WPT
   const int glb_row = get_global_id(ROW_DIM);
-
-//  printf("row: %d, col: %d, global_row: %d", loc_row, loc_col, glb_row);
+  if (reset_output) output[glb_row] = 0.0f;
 
   for (int it = 0; it < n/TS+1; it++) {
 
     const int tiledIter = TS*it + loc_col;
     if (tiledIter < n) {
-//      printf("I[tI]: %f|   tI: %d|   M[index]: %f|   index: %d|   input_size: %d",
-//       input[tiledIter], tiledIter, matrix[glb_row*n + tiledIter], glb_row*n + tiledIter, n);
-//      barrier(CLK_LOCAL_MEM_FENCE);
       acc[loc_row][loc_col] +=  input[tiledIter] * matrix[glb_row*n + tiledIter];
       barrier(CLK_LOCAL_MEM_FENCE);
     }
@@ -67,6 +64,7 @@ float sigmoid(float v) {
 }
 
 __kernel void activate(
+    __global float *input,
     __global float *output,
     const unsigned int activation_type
 ) {
@@ -74,24 +72,28 @@ __kernel void activate(
   const int i = get_global_id(0);
 
   if (activation_type == 0) { // BINARY_STEP
-    if (output[i] < 0)
-      output[i] = 0;
+    if (input[i] < 0)
+      input[i] = 0;
     else
-      output[i] = 1;
+      input[i] = 1;
   }
   else if (activation_type == 2) { // SIGMOID
-    output[i] = sigmoid(output[i]);
+    output[i] = sigmoid(input[i]);
   }
   else if (activation_type == 3) { // TANH
-    output[i] = tanh(output[i]);
+    output[i] = tanh(input[i]);
   }
   else if (activation_type == 4) { // RELU
-    if (output[i] < 0)
+    if (input[i] < 0)
       output[i] = 0;
+    else
+      output[i] = input[i];
   }
   else if (activation_type == 5) { // LEAKY_RELU
-    if (output[i] < 0)
+    if (input[i] < 0)
       output[i] = 0.01*output[i];
+    else
+      output[i] = input[i];
   }
   else if (activation_type == 6) { // SOFTMAX
 //     output[i] = exp(output[i]);
@@ -108,7 +110,7 @@ __kernel void activation_derivative (
   const int i = get_global_id(0);
 
   if (activation_type == 1) { // LINEAR
-    output[i] *= 1;
+//    output[i] *= 1;
   }
   else if (activation_type == 2) { // SIGMOID
     output[i] *= activation[i] * (1 + activation[i]);
@@ -132,23 +134,5 @@ __kernel void activation_derivative (
   else if (activation_type == 6) { // SOFTMAX
      output[i] *= activation[i] * (1 - activation[i]);
   }
-
-}
-
-__kernel void identity(
-    __global const float* input,
-    __global const float* matrix,
-    __global float* output,
-    const unsigned int size
-) {
-
-  const int i = get_global_id(0);
-
-  output[i] = 0.0f;
-
-  for (int k=0; k<size; k++) {
-    output[i] += input[k] * matrix[i*size + k];
-  }
-  barrier(CLK_LOCAL_MEM_FENCE);
 
 }

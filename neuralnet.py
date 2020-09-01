@@ -27,22 +27,16 @@ class NeuralNet:
             layer.set_next_layer(layers[i+1].layer)
             print(type(layer), layer.layer_size, layer.print_activation())
 
-            layer.set_bias(pycl_array.to_device(
-                self.cl.queue,
-                np.random.uniform(-1, 1, layer.next_layer_size).astype(np.float32)
-            ))
+            layer.set_bias(self.cl.uniform(-1, 1, layer.next_layer_size))
 
-            layer.set_weights(pycl_array.to_device(
-                self.cl.queue,
-                np.random.uniform(-1, 1, (layer.next_layer_size,
-                                          layer.layer_size)).astype(np.float32)
-            ))
+            layer.set_weights(self.cl.uniform(-1, 1, (layer.next_layer_size,
+                                                      layer.layer_size)))
         # print("SETUP NN COMPLETE")
 
     def forward(self, _input: np.array) -> None:
         """
         Forward propagation implementation of a feed forward implementation.
-        :param _input:
+        :param _input: the input vector to run the array on.
         :return:
         """
         if len(_input) != self.input_size:
@@ -102,7 +96,7 @@ class NeuralNet:
             min_error = min(min_error, epoch_error)
 
             if epoch % print_every==(print_every-1):
-                print(f'({epoch+1}) total: {total_error} | min: {min_error} ||', end='\t')
+                print(f'({epoch+1}) avg: {total_error/print_every} | min: {min_error} ||', end='\t')
                 total_error = 0
                 min_error = float('inf')
 
@@ -112,10 +106,7 @@ class NeuralNet:
 
     def train_batch(self, xys) -> float:
         for layer in self.__layers:
-            layer.weights_del: pycl_array.Array = pycl_array.to_device(
-                self.cl.queue,
-                np.zeros((layer.next_layer_size, layer.layer_size)).astype(np.float32)
-            )
+            layer.weights_del: pycl_array.Array = self.cl.zeros((layer.next_layer_size, layer.layer_size))
             layer.transposed: pycl_array.Array = pycl_array.transpose(layer.weights)
             layer.bias_del: pycl_array.Array = pycl_array.zeros_like(layer.bias)
 
@@ -133,6 +124,7 @@ class NeuralNet:
                 error_vec = layer.backward(error_vec)
 
         # self.update_weights(0.01)
+        # TODO: add adam optmizer
 
         for layer in self.__layers:
             layer.weights -= self.learning_rate*layer.weights_del
@@ -155,9 +147,7 @@ class NeuralNet:
 
         # Copying in the input layer info
         ret.input_size = self.input_size
-        ret.input_layer = pycl_array.to_device(
-            self.cl.queue,
-            np.zeros(ret.input_size).astype(np.float32))
+        ret.input_layer = self.cl.zeros(ret.input_size)
 
         # Copying in the output layer info
         ret.output_size = self.output_size

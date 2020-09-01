@@ -1,4 +1,4 @@
-# pyopencl-ml
+<h1 align="center"> pyopencl-ml </h1>
 <h4 align="center">An AMD APU compatible machine learning library with pyopencl.</h4>
 
 <p align="center">
@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/github/last-commit/dasanish/pyopencl-ml"> •
 </p>
 
-### Content
+<h3 align="center"> Content </h3>
 <p align="center">
     <a href="#about"> About </a> •
     <a href="#installation"> Installation </a> •
