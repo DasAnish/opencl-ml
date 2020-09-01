@@ -1,6 +1,8 @@
 from layer import *
 from clobject import *
 from neuralnet import NeuralNet
+import os
+os.chdir('..')
 
 
 xys = []

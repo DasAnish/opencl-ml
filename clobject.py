@@ -46,7 +46,7 @@ class Code:
         self.cl = ClSingleton.get_instance()
         # path_to_file = os.path.join('D:', 'Desktop', 'Diss', 'opencl-ml', 'kernel.cl')
 
-        with open('D:\\Desktop\\Diss\\opencl-ml\\kernel.cl', 'r') as f:
+        with open('kernel.cl', 'r') as f:
             self.code = f.read()
 
         self.program = cl.Program(self.cl.context, self.code).build()
