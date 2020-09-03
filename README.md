@@ -17,9 +17,10 @@
 </p>
 
 ## About
-Tensorflow-gpu doesn't have GPU support for AMD-GPUs and have not found any good 
-way to run machine learning algorithms on Windows, I chose to build my own with pyopencl. 
-This is very much in it's infancy at the moment and should improve with time.
+Most machine learning frameworks in python don't have GPU support for AMD-GPUs 
+and thus no convenient way to run machine learning algorithms on windows with AMD APU.
+This project was created to provide a starting point and is very much in it's 
+infancy at the moment and should improve with time.
 
 ## Installation
 * Installing OpenCL
