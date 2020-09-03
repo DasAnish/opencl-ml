@@ -20,19 +20,25 @@
 Most machine learning frameworks in python don't have GPU support for AMD-GPUs 
 and thus no convenient way to run machine learning algorithms on windows with AMD APU.
 This project was created to provide a starting point and is very much in it's 
-infancy at the moment and should improve with time.
+infancy at the moment and should improve with time.\
+\
+*Apropos: This project can run on all hardware accelerators.*
 
 ## Installation
-* Installing OpenCL
-    - recently the AMD sdk for opencl was discontinue but 
+* Installing OpenCL: 
+    - install an appropriate OpenCL SDK.
+        - for AMD: recently the AMD sdk for opencl was discontinued but 
     [OCL-SDK](https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/releases)
     has worked so far.
-    - download & extract the zip 
     - set / append Environment Variables `LIB` to `lib/x86_64` && `INCLUDE` to `include`
 * Installing PyOpenCL
-    - install in cmd using: `pip install pyopencl`. If it doesn't work then try
+    - install in terminal using: `pip install pyopencl`. If it doesn't work then try
     ```
-    pip3 install --global-option=build_ext --global-option="-I[ADJUST_PATH]\OCL_SDK_Light\include" --global-option="-L[ADJUST_PATH]\OCL_SDK_Light\lib\x86_64" pyopencl
+    pip3 install 
+        --global-option=build_ext 
+        --global-option="-I[ADJUST_PATH]\include" 
+        --global-option="-L[ADJUST_PATH]\lib\x86_64" 
+        pyopencl
     ```
 
 ## Usage
