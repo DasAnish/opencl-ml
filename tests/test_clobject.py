@@ -5,7 +5,7 @@ import pyopencl as cl
 import pyopencl.array as pycl_array
 import os
 print(os.curdir)
-os.chdir("..")
+# os.chdir("..")
 
 
 def test_singleton_implementation():

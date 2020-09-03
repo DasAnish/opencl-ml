@@ -3,7 +3,7 @@ import numpy as np
 import pyopencl.array as pycl_array
 import pytest
 import os
-os.chdir("..")
+# os.chdir("..")
 # checking that the multiplication is correct
 
 clsingle: ClSingleton = ClSingleton.get_instance()

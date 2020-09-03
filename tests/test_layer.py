@@ -5,7 +5,7 @@ import pyopencl.array as pycl_array
 from pytest import raises, approx
 import copy
 import os
-os.chdir('..')
+# os.chdir('..')
 
 size = np.int32(512)
 size_ = np.int32(511)
