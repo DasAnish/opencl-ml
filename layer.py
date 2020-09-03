@@ -7,6 +7,7 @@ from error import *
 import copy
 
 BINARY_STEP, LINEAR, SIGMOID, TANH, RELU, LEAKY_RELU, SOFTMAX = (np.int32(i) for i in range(7))
+# TODO: add save
 
 
 class Layer:
@@ -19,7 +20,7 @@ class Layer:
 
         self.activation_type: np.int32 = np.int32(activation_type)
         self.linear_gradient: int = 1
-        self.leak: int = 0.01
+        self.leak: float = 0.01
 
         self.layer_size: np.int32 = np.int32(size)
         self.layer: pycl_array.Array = self.cl.zeros(size)
@@ -173,13 +174,15 @@ class Layer:
             raise TypeError(f"Weights should be of activation_type {pycl_array.Array}"
                             f"provided {type(weights)}")
         if weights.shape != (self.next_layer_size,self.layer_size):
-            raise IndexError(f"The size does't fit please make sure it has shape"
-                             f" {self.layer_size}*{self.next_layer_size}")
+            raise ValueError(f"The size does't fit please make sure it has shape"
+                             f" ({self.layer_size}, {self.next_layer_size})")
 
         self.weights = weights
         self.transposed = pycl_array.transpose(weights)
 
     def set_bias(self, bias: pycl_array.Array) -> None:
+        if self.next_layer is None:
+            raise ValueError("Please set next_layer first")
         if not isinstance(bias, pycl_array.Array):
             raise TypeError(f"Please provide a {pycl_array.Array}"
                             f" instead of {type(bias)}")

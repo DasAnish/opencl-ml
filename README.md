@@ -3,7 +3,7 @@
 
 <p align="center">
     <img src="https://img.shields.io/github/languages/top/dasanish/pyopencl-ml"> •
-    <img src="https://img.shields.io/github/last-commit/dasanish/pyopencl-ml"> •
+    <img src="https://img.shields.io/github/last-commit/dasanish/pyopencl-ml"> 
 </p>
 
 <h3 align="center"> Content </h3>
@@ -65,7 +65,7 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 Please make sure to update tests as appropriate.
 
 ## Author(s)
-- Anish Das (ad945@cam.ac.uk) [Github](https://github.com/DasAnish)
+- Anish Das (ad945@cam.ac.uk)
 
 ## License 
 [![License: MIT](https://img.shields.io/github/license/dasanish/pyopencl-ml)](https://choosealicense.com/licenses/mit/)

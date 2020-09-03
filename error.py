@@ -1,5 +1,6 @@
 from clobject import ClSingleton
 import pyopencl.array as pycl_array
+import numpy as np
 import abc
 
 
@@ -37,7 +38,8 @@ class MeanSquaredError(Loss):
         expected = self.convert_to_arrays(expected)
 
         out = predicted - expected
-        return pycl_array.dot(out, out) / 2
+        out = pycl_array.dot(out, out) / 2
+        return out.get().max()
 
     def error_derivative(self, predicted, expected) -> pycl_array.Array:
         """Returns the vector (expected - predicted)."""

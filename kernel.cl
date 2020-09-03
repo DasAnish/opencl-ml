@@ -43,6 +43,14 @@ __kernel void matrix_vector_mul(
   if (loc_col == 0) output[glb_row] += acc[loc_row][0];
 }
 
+/*
+shape of weights del: (next_layer_size, layer_size)
+0 <= d < next_layer_size {for deltas}
+0 <= z < layer_size {for Z}
+size = layer_size
+index = z + d*size
+*/
+
 __kernel void weights_del(
     const unsigned int size,
     __global const float *del_values,
@@ -50,10 +58,10 @@ __kernel void weights_del(
     __global float *weights_del_values
 ) {
 
-  const int i = get_global_id(0); // max is layer_size
-  const int j = get_global_id(1); // max is next_layer_size
+  const int d = get_global_id(0); // max is next/delta 3
+  const int z = get_global_id(1); // max is layer 4
 
-  weights_del_values[j*size + i] += del_values[j]*z_values[i];//j*i;//
+  weights_del_values[z + d*size] += del_values[d]*z_values[z];////j*i;//
 
 }
 

@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 RESET_OUTPUT, CUMULATIVE_OUTPUT = (np.int32(i) for i in (1, 0))
-TS = 16
+TS = 8
 WPT = 256 // TS
 
 
@@ -34,6 +34,12 @@ class ClSingleton:
         return pycl_array.to_device(
             self.queue,
             np.zeros(shape).astype(np.float32)
+        )
+
+    def ones(self, shape) -> pycl_array.Array:
+        return pycl_array.to_device(
+            self.queue,
+            np.ones(shape).astype(np.float32)
         )
 
     def random(self, shape) -> pycl_array.Array:
